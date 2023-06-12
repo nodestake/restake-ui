@@ -122,11 +122,11 @@
     "name": "starname"
   },
   {
-    "name": "rizon"
+    "name": "rizon",
     "ownerAddress": "rizonvaloper19f0w9svr905fhefusyx4z8sf83j6et0gsj7p4y"
   },
   {
-    "name": "decentr"
+    "name": "decentr",
     "ownerAddress": "decentrvaloper19f0w9svr905fhefusyx4z8sf83j6et0g52df8n"
   },
   {
@@ -150,7 +150,7 @@
     "enabled": false
   },
   {
-    "name": "harpoon"
+    "name": "harpoon",
     "testnet": true
   },
   {
