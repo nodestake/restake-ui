@@ -188,7 +188,7 @@ class Network {
       chainName: this.prettyName,
       stakeCurrency: currency,
       bip44: { coinType: this.slip44 },
-      walletUrlForStaking: "https://restake.app/" + this.name,
+      walletUrlForStaking: "https://restake.nodestake.top/" + this.name,
       bech32Config: {
         bech32PrefixAccAddr: this.prefix,
         bech32PrefixAccPub: this.prefix + "pub",

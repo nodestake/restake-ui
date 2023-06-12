@@ -811,18 +811,18 @@ class App extends React.Component {
           )}
         </div>
         <footer className="d-flex flex-wrap justify-content-between align-items-center py-3 my-4 border-top">
-          <a href="https://akash.network" target="_blank" rel="noreferrer" className="col-md-4 mb-0 text-muted">
+          <a href="https://twitter.com/NodeStake_top" target="_blank" rel="noreferrer" className="col-md-4 mb-0 text-muted">
             {this.props.theme === 'light'
               ? (
-                <img src={PoweredByAkash} alt="Powered by Akash" width={200} />
+                <img src={TooltipIcon} alt="Twitter" width={100} />
               ) : (
-                <img src={PoweredByAkashWhite} alt="Powered by Akash" width={200} />
+                <img src={TooltipIcon} alt="Twitter" width={100} />
               )}
           </a>
 
           <div className="col-md-4 align-items-center text-center me-lg-auto">
-            <a href="https://ecostake.com" target="_blank" rel="noreferrer" className="text-reset text-decoration-none d-block mb-2">
-              <span className="d-none d-sm-inline">Built with 💚&nbsp;</span> by ECO Stake 🌱
+            <a href="https://explorer.nodestake.top" target="_blank" rel="noreferrer" className="text-reset text-decoration-none d-block mb-2">
+              <span className="d-none d-sm-inline">Go to&nbsp;</span> <u>NodeStake Explorer</u>
             </a>
             <a href={`https://${this.props.directory.domain}`} target="_blank" className="text-reset text-decoration-none d-block small">
               <span className="d-none d-sm-inline">Interchain APIs from</span> <u>cosmos.directory</u>
