@@ -15,11 +15,6 @@
     "ownerAddress": "gravityvaloper19f0w9svr905fhefusyx4z8sf83j6et0g4sth5s"
   },
   {
-    "name": "desmos",
-    "authzSupport": true,
-    "authzAminoSupport": true
-  },
-  {
     "name": "evmos",
     "ownerAddress": "evmosvaloper1xaxg47uw046uw8vgpp3da367ctw9aguqjuyyyx",
     "txTimeout": 120000,
@@ -27,7 +22,7 @@
     "authzAminoSupport": false
   },
   {
-    "name": "cheqd"，
+    "name": "cheqd",
     "ownerAddress": "cheqdvaloper10n3fs6fkl4fp9dcsdfl2vl3ay7pk7snnqchj26"
   },
   {
@@ -45,5 +40,104 @@
   {
     "name": "rizon",
     "ownerAddress": "rizonvaloper19f0w9svr905fhefusyx4z8sf83j6et0gsj7p4y"
+  },
+  {
+    "name": "decentr",
+    "ownerAddress": "decentrvaloper19f0w9svr905fhefusyx4z8sf83j6et0g52df8n"
+  },
+  {
+    "name": "assetmantle",
+    "ownerAddress": "mantlevaloper19f0w9svr905fhefusyx4z8sf83j6et0g7slqln"
+  },
+  {
+    "name": "genesisl1",
+    "txTimeout": 120000
+  },
+  {
+    "name": "teritori",
+    "ownerAddress": "torivaloper19f0w9svr905fhefusyx4z8sf83j6et0g8d58j3"
+  },
+  {
+    "name": "lambda",
+    "ownerAddress": "lambvaloper1qt6yf3fvz250uddj04rxglfd40v8nruqplx8us"
+  },
+  {
+    "name": "point",
+    "ownerAddress": "pointvaloper1qt6yf3fvz250uddj04rxglfd40v8nruq85akl6"
+  },
+  {
+    "name": "rebus",
+    "ownerAddress": "rebusvaloper1qt6yf3fvz250uddj04rxglfd40v8nruq6asnlu"
+  },
+  {
+    "name": "jackal",
+    "ownerAddress": "jklvaloper19f0w9svr905fhefusyx4z8sf83j6et0gvxwf62"
+  },
+  {
+    "name": "chain4energy",
+    "ownerAddress": "c4evaloper146r52hlajqpqduxu69x6jadslvxe2m52q627ay"
+  },
+  {
+    "name": "canto",
+    "ownerAddress": "cantovaloper1q9puynszmmwmsvhsr4g3zgrd6jxt8tks7cuayu",
+    "gasPriceStep": {
+      "low": 500000000000,
+      "average": 1000000000000,
+      "high": 4000000000000
+    }
+  },
+  {
+    "name": "acrechain",
+    "ownerAddress": "acrevaloper1qt6yf3fvz250uddj04rxglfd40v8nruqkmx2re"
+  },
+  {
+    "name": "planq",
+    "gasPrice": "30000000000aplanq",
+    "ownerAddress": "plqvaloper1qt6yf3fvz250uddj04rxglfd40v8nruqzxjl7t"
+  },
+  {
+    "name": "mars",
+    "ownerAddress": "marsvaloper19f0w9svr905fhefusyx4z8sf83j6et0gf69a2j"
+  },
+  {
+    "name": "8ball",
+    "ownerAddress": "8ballvaloper1sdlfp8n5fcfa7qw7770ngqs02k876gf6mzd2rq"
+  },
+  {
+    "name": "kyve",
+    "ownerAddress": "kyvevaloper19f0w9svr905fhefusyx4z8sf83j6et0g94d872"
+  },
+  {
+    "name": "aura",
+    "ownerAddress": "auravaloper19f0w9svr905fhefusyx4z8sf83j6et0gq0xmpt"
+  },
+  {
+    "name": "terpnetwork",
+    "ownerAddress": "terpvaloper19f0w9svr905fhefusyx4z8sf83j6et0gk7vf3w"
+  },
+  {
+    "name": "nois",
+    "ownerAddress": "noisvaloper19f0w9svr905fhefusyx4z8sf83j6et0gsr06wq"
+  },
+  {
+    "name": "uptick",
+    "ownerAddress": "uptickvaloper1qt6yf3fvz250uddj04rxglfd40v8nruq47xkt5"
+  },
+  {
+    "name": "omniflixhub",
+    "ownerAddress": "omniflixvaloper1x70l4dcj30nr4x52ph3jmkpgz79qgktxe0w4tl"
+  },
+  {
+    "name": "migaloo",
+    "ownerAddress": "migaloovaloper19f0w9svr905fhefusyx4z8sf83j6et0glwd8vf",
+    "gasPriceStep": {
+      "low": 0.25,
+      "average": 0.5,
+      "high": 0.75
+    }
+  },
+  {
+    "name": "gitopia",
+    "ownerAddress": "gitopiavaloper19f0w9svr905fhefusyx4z8sf83j6et0gkfrk55"
   }
 ]
