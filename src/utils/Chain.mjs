@@ -12,6 +12,8 @@ const Chain = (data) => {
   const authzSupport = data.authzSupport ?? data.params?.authz
   const authzAminoSupport = data.authzAminoSupport ?? true
   const authzAminoGenericOnly = authzAminoSupport && (data.authzAminoGenericOnly ?? !sdkAuthzAminoSupport)
+  const authzAminoLiftedValues = authzAminoSupport && (data.authzAminoLiftedValues ?? authzAminoGenericOnly)
+  const authzAminoExecPreventTypes = data.authzAminoExecPreventTypes || []
   const apiVersions = {
     gov: sdk46OrLater ? 'v1' : 'v1beta1',
     ...data.apiVersions || {}
@@ -28,6 +30,8 @@ const Chain = (data) => {
     authzSupport,
     authzAminoSupport,
     authzAminoGenericOnly,
+    authzAminoLiftedValues,
+    authzAminoExecPreventTypes,
     apiVersions,
     denom: data.denom || baseAsset?.base?.denom,
     display: data.display || baseAsset?.display?.denom,
