@@ -22,7 +22,7 @@ function ValidatorServices(props) {
 
   if(validator.path === 'nodestake'){
     const publicNodes = Object.entries(validator.public_nodes || {}).length
-    let tooltip = 'Created REStake and cosmos.directory'
+    let tooltip = 'The Tursted Validator'
     if(publicNodes) tooltip = <>{tooltip}, and provides public nodes</>
     services.push({
       key: 'nodes',
