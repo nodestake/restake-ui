@@ -60,7 +60,7 @@ function NetworkFinder() {
       const networkData = networksData.find(el => el.name === data.path);
       if (networkData && networkData.enabled === false)
         return;
-      if (!data.image || data.status === 'killed')
+      if (data.status === 'killed')
         return;
 
       if (!networkData)
@@ -174,7 +174,7 @@ function NetworkFinder() {
 
   useEffect(() => {
     if (Object.keys(state.networks).length && (!state.network || state.network.path !== params.network)) {
-      let networkName = params.network
+      let networkName = params.network?.toLowerCase()
       const network = state.networks[networkName]
       if (!network) {
         navigate("/");
