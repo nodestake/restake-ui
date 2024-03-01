@@ -38,6 +38,7 @@ class Network {
       }
     })
     this.online = !this.usingDirectory || this.connectedDirectory()
+    this.disabledWallets = data.disabledWallets || []
   }
 
   connectedDirectory() {
@@ -182,6 +183,17 @@ class Network {
       this.authzSupport && 'authz',
       this.authzAminoSupport && 'full authz ledger',
     ])
+  }
+
+  timeToBlock(height){
+    const params = this.chain.params
+    const currentHeight = params.current_block_height
+    const blockTime = params.actual_block_time
+    return (height - currentHeight) * blockTime
+  }
+
+  assetForDenom(denom){
+    return this.assets.find(el => el.base.denom === denom)
   }
 }
 
