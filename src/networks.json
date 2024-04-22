@@ -11,10 +11,6 @@
     "ownerAddress": "cosmosvaloper19f0w9svr905fhefusyx4z8sf83j6et0g9l5yhl"
   },
   {
-    "name": "gravitybridge",
-    "ownerAddress": "gravityvaloper19f0w9svr905fhefusyx4z8sf83j6et0g4sth5s"
-  },
-  {
     "name": "evmos",
     "ownerAddress": "evmosvaloper1xaxg47uw046uw8vgpp3da367ctw9aguqjuyyyx",
     "txTimeout": 120000,
@@ -30,28 +26,12 @@
     "ownerAddress": "agoricvaloper1nkhsz0uk0d8qd4p7unrwej0j3ne8acpk9dd3sg"
   },
   {
-    "name": "kichain",
-    "ownerAddress": "kivaloper19f0w9svr905fhefusyx4z8sf83j6et0g9plrux"
-  },
-  {
-    "name": "secretnetwork",
-    "authzAminoSupport": true
-  },
-  {
-    "name": "rizon",
-    "ownerAddress": "rizonvaloper19f0w9svr905fhefusyx4z8sf83j6et0gsj7p4y"
-  },
-  {
     "name": "decentr",
     "ownerAddress": "decentrvaloper19f0w9svr905fhefusyx4z8sf83j6et0g52df8n"
   },
   {
     "name": "assetmantle",
     "ownerAddress": "mantlevaloper19f0w9svr905fhefusyx4z8sf83j6et0g7slqln"
-  },
-  {
-    "name": "genesisl1",
-    "txTimeout": 120000
   },
   {
     "name": "teritori",
@@ -87,21 +67,9 @@
     }
   },
   {
-    "name": "acrechain",
-    "ownerAddress": "acrevaloper1qt6yf3fvz250uddj04rxglfd40v8nruqkmx2re"
-  },
-  {
     "name": "planq",
     "gasPrice": "30000000000aplanq",
     "ownerAddress": "plqvaloper1qt6yf3fvz250uddj04rxglfd40v8nruqzxjl7t"
-  },
-  {
-    "name": "mars",
-    "ownerAddress": "marsvaloper19f0w9svr905fhefusyx4z8sf83j6et0gf69a2j"
-  },
-  {
-    "name": "8ball",
-    "ownerAddress": "8ballvaloper1sdlfp8n5fcfa7qw7770ngqs02k876gf6mzd2rq"
   },
   {
     "name": "kyve",
@@ -110,10 +78,6 @@
   {
     "name": "aura",
     "ownerAddress": "auravaloper19f0w9svr905fhefusyx4z8sf83j6et0gq0xmpt"
-  },
-  {
-    "name": "terpnetwork",
-    "ownerAddress": "terpvaloper19f0w9svr905fhefusyx4z8sf83j6et0gk7vf3w"
   },
   {
     "name": "nois",
@@ -155,5 +119,41 @@
   {
     "name": "stratos",
     "ownerAddress": "stvaloper1g8fmnrz00sqh9pz3ghf8ram9q86te804f8pr28"
+  },
+  {
+    "name": "humans",
+    "ownerAddress": "humanvaloper1qt6yf3fvz250uddj04rxglfd40v8nruqmumcwn"
+  },
+  {
+    "name": "celestia",
+    "ownerAddress": "celestiavaloper19f0w9svr905fhefusyx4z8sf83j6et0g57nch8"
+  },
+  {
+    "name": "nibiru",
+    "ownerAddress": "nibivaloper19f0w9svr905fhefusyx4z8sf83j6et0g742nxz"
+  },
+  {
+    "name": "blockx",
+    "ownerAddress": "blockxvaloper1yp394rmk45ndk3durlp7ft58pm6rwlnqfa3ucs"
+  },
+  {
+    "name": "zetachain",
+    "ownerAddress": "stvaloper1g8fmnrz00sqh9pz3ghf8ram9q86te804f8pr28"
+  },
+  {
+    "name": "dymension",
+    "ownerAddress": "dymvaloper1jpvku8u4al5kx4zm3hqm9j9faw3qhx6ss4ueq9"
+  },
+  {
+    "name": "dhealth",
+    "ownerAddress": "dhvaloper10n3fs6fkl4fp9dcsdfl2vl3ay7pk7snn33uhmt"
+  },
+  {
+    "name": "saga",
+    "ownerAddress": "sagavaloper19f0w9svr905fhefusyx4z8sf83j6et0gsn0qkm"
+  },
+  {
+    "name": "crossfi",
+    "ownerAddress": "mxvaloper1x70l4dcj30nr4x52ph3jmkpgz79qgktx7vd2j3"
   }
 ]
