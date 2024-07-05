@@ -65,15 +65,10 @@ class Network {
     this.validators = (await this.directory.getValidators(this.name)).map(data => {
       return Validator(this, data)
     })
-    const operators = (this.data.operators || this.validators.filter(el => el.restake && this.allowOperator(el.operator_address))).map(data => {
+    this.operators = (this.data.operators || this.validators.filter(el => el.restake && this.allowOperator(el.operator_address))).map(data => {
       return Operator(this, data)
     })
-    this.operatorCount = operators.length
-    if(this.restakeSupport){
-      this.operators = operators
-    }else{
-      this.operators = []
-    }
+    this.operatorCount = this.operators.length
   }
 
   async setChain(data){
@@ -98,9 +93,6 @@ class Network {
     this.authzAminoGenericOnly = this.chain.authzAminoGenericOnly
     this.authzAminoLiftedValues = this.chain.authzAminoLiftedValues
     this.authzAminoExecPreventTypes = this.chain.authzAminoExecPreventTypes
-    this.aminoPreventTypes = this.chain.aminoPreventTypes
-    this.restakeSupport = this.chain.restakeSupport
-    this.restakeAlert = data.restakeAlert
     this.txTimeout = this.data.txTimeout || 60_000
     this.keywords = this.buildKeywords()
 

@@ -309,10 +309,6 @@ class Delegations extends React.Component {
     return this.props.network.authzSupport
   }
 
-  restakeSupport() {
-    return this.authzSupport() && this.props.network.restakeSupport
-  }
-
   operatorGrants() {
     if (!this.state.operatorGrants) return {}
     return this.props.operators.reduce((sum, operator) => {
@@ -332,7 +328,7 @@ class Delegations extends React.Component {
   }
 
   restakePossible() {
-    return this.props.address && this.state.walletAuthzSupport && this.restakeSupport();
+    return this.props.address && this.state.walletAuthzSupport && this.authzSupport();
   }
 
   totalRewards(validators) {
@@ -416,11 +412,6 @@ class Delegations extends React.Component {
 
     const alerts = (
       <>
-        {this.props.network.restakeAlert && (
-          <AlertMessage variant="info" dismissible={false}>
-            {this.props.network.restakeAlert}
-          </AlertMessage>
-        )}
         {!this.authzSupport() && (
           <AlertMessage variant="info" dismissible={false}>
             {this.props.network.prettyName} doesn't support Authz just yet. You can stake and compound manually, REStake will update automatically when support is added.
