@@ -9,15 +9,17 @@ const Chain = (data) => {
   const ledgerSupport = data.ledgerSupport ?? slip44 !== 60 // no ethereum ledger support for now
   const sdk46OrLater = validate(cosmos_sdk_version) && compareVersions(cosmos_sdk_version, '0.46') >= 0
   const sdkAuthzAminoSupport = sdk46OrLater
+  const aminoPreventTypes = data.aminoPreventTypes || []
   const authzSupport = data.authzSupport ?? data.params?.authz
   const authzAminoSupport = data.authzAminoSupport ?? true
   const authzAminoGenericOnly = authzAminoSupport && (data.authzAminoGenericOnly ?? !sdkAuthzAminoSupport)
   const authzAminoLiftedValues = authzAminoSupport && (data.authzAminoLiftedValues ?? authzAminoGenericOnly)
-  const authzAminoExecPreventTypes = data.authzAminoExecPreventTypes || []
+  const authzAminoExecPreventTypes = aminoPreventTypes.concat(data.authzAminoExecPreventTypes || [])
   const apiVersions = {
     gov: sdk46OrLater ? 'v1' : 'v1beta1',
     ...data.apiVersions || {}
   }
+  const restakeSupport = authzSupport && (data.restakeEnabled ?? true)
 
   return {
     ...data,
@@ -27,12 +29,14 @@ const Chain = (data) => {
     slip44,
     estimatedApr: data.params?.calculated_apr,
     ledgerSupport,
+    aminoPreventTypes,
     authzSupport,
     authzAminoSupport,
     authzAminoGenericOnly,
     authzAminoLiftedValues,
     authzAminoExecPreventTypes,
     apiVersions,
+    restakeSupport,
     denom: data.denom || baseAsset?.base?.denom,
     display: data.display || baseAsset?.display?.denom,
     symbol: data.symbol || baseAsset?.symbol,
