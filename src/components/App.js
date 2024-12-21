@@ -54,7 +54,9 @@ import WalletModal from './WalletModal';
 import Wallet from '../utils/Wallet.mjs';
 import SendModal from './SendModal';
 import KeplrSignerProvider from '../utils/KeplrSignerProvider.mjs';
+import FalconSignerProvider from '../utils/FalconSignerProvider.mjs';
 import LeapSignerProvider from '../utils/LeapSignerProvider.mjs';
+import KeplrMobileSignerProvider from '../utils/KeplrMobileSignerProvider.mjs';
 import ConnectWalletModal from './ConnectWalletModal';
 import { truncateAddress } from '../utils/Helpers.mjs';
 import CosmostationSignerProvider from '../utils/CosmostationSignerProvider.mjs';
@@ -72,7 +74,22 @@ class App extends React.Component {
     this.signerProviders = [
       new KeplrSignerProvider(window.keplr),
       new LeapSignerProvider(window.leap),
-      new CosmostationSignerProvider(window.cosmostation?.providers?.keplr, window.cosmostation?.cosmos)
+      new CosmostationSignerProvider(window.cosmostation?.providers?.keplr, window.cosmostation?.cosmos),
+      // new KeplrMobileSignerProvider({
+      //   connectModal: {
+      //     open: (uri, callback) => {
+      //       this.setState({
+      //         connectWallet: true,
+      //         qrCodeUri: uri || this.state.qrCodeUri,
+      //         qrCodeCallback: callback || this.state.qrCodeCallback
+      //       })
+      //     },
+      //     close: () => {
+      //       this.setState({ connectWallet: false })
+      //     }
+      //   }
+      // }),
+      // new FalconSignerProvider(window.falcon)
     ]
     this.signerConnectors = {}
     this.connectAuto = this.connectAuto.bind(this);
@@ -752,7 +769,7 @@ class App extends React.Component {
           <AlertMessage message={this.state.error} variant="danger" dismissible={false} />
           {!this.state.providerError === 'keplr' && (
             <AlertMessage variant="warning" dismissible={true} onClose={() => this.setState({ providerError: false })}>
-              Please install the <a href="https://chrome.google.com/webstore/detail/keplr/dmkamcknogkgcdfhhbddcghachkejeap?hl=en" target="_blank" rel="noreferrer">Keplr browser extension</a> using desktop Google Chrome.
+              Please install the <a href="https://chrome.google.com/webstore/detail/keplr/dmkamcknogkgcdfhhbddcghachkejeap?hl=en" target="_blank" rel="noreferrer">Keplr browser extension</a> using desktop Google Chrome.<br />WalletConnect and mobile support is coming soon.
             </AlertMessage>
           )}
           {this.props.active === 'networks' && (

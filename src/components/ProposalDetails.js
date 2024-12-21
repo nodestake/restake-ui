@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Moment from 'react-moment';
-import {micromark} from 'micromark';
-import {gfm, gfmHtml} from 'micromark-extension-gfm';
-import DOMPurify from 'dompurify';
-
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 import {
   Table,
@@ -27,28 +25,6 @@ function ProposalDetails(props) {
   const { proposal_id, title, description } = proposal
 
   const fixDescription = description?.replace(/\\n/g, '  \n')
-
-  const transformHTMLString = (htmlString, isSpam) => {
-    let transformedString = htmlString;
-  
-    // Transform headings
-    transformedString = transformedString.replace(/<h[2-6]>(.*?)<\/h[2-6]>/g, '<h6>$1</h6>');
-    transformedString = transformedString.replace(/<h1>(.*?)<\/h1>/g, '<h5>$1</h5>');
-  
-    // Remove all <a> tags if proposal is spam
-    if (isSpam) {
-      transformedString = transformedString.replace(/<a[^>]*>(.*?)<\/a>/g, '<span>$1</span>');
-    }
-  
-    // Apply table class
-    transformedString = transformedString.replace(/<table>/g, '<table class="table">');
-  
-    return transformedString;
-  };
-
-  const htmlDescription = micromark(fixDescription, { extensions: [gfm()], htmlExtensions: [gfmHtml()] })
-  const sanitizedHtml = DOMPurify.sanitize(htmlDescription);
-  const transformedDescription = transformHTMLString(sanitizedHtml, proposal.isSpam);
 
   useEffect(() => {
     if(props.address !== props.wallet?.address && props.granters.includes(props.address)){
@@ -197,7 +173,21 @@ function ProposalDetails(props) {
             <div className="row mt-3">
               <div className="col">
                 <h5 className="mb-3">{title}</h5>
-                <div dangerouslySetInnerHTML={{ __html: transformedDescription }}></div>
+                <ReactMarkdown
+                  children={fixDescription}
+                  remarkPlugins={[remarkGfm]}
+                  disallowedElements={proposal.isSpam ? ['a'] : []}
+                  unwrapDisallowed={true}
+                  components={{
+                    h1: 'h5',
+                    h2: 'h6',
+                    h3: 'h6',
+                    h4: 'h6',
+                    h5: 'h6',
+                    h6: 'h6',
+                    table: ({node, ...props}) => <table className="table" {...props} />
+                  }}
+                />
               </div>
             </div>
           </Tab.Pane>
