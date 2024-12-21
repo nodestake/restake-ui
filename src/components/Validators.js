@@ -22,7 +22,6 @@ import ValidatorName from "./ValidatorName";
 import ValidatorServices from './ValidatorServices';
 import REStakeStatus from './REStakeStatus';
 import AlertMessage from './AlertMessage';
-import { omit } from '../utils/Helpers.mjs';
 
 function Validators(props) {
   const { address, wallet, network, validators, operators, delegations, operatorGrants } = props
@@ -85,7 +84,7 @@ function Validators(props) {
   function filteredValidators(validators, filter){
     let searchResults
     if (props.exclude){
-      searchResults = Object.values(omit(validators, ...props.exclude))
+      searchResults = Object.values(_.omit(validators, props.exclude))
     }else{
       searchResults = Object.values(validators)
     }

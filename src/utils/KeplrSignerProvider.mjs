@@ -22,6 +22,13 @@ export default class KeplrSignerProvider extends SignerProvider {
     return !!this.provider || isMobile()
   }
 
+  enable(network){
+    this.setOptions({
+      sign: { preferNoSetFee: true }
+    })
+    return super.enable(network)
+  }
+
   setOptions(options){
     return _.merge(this.provider.defaultOptions, options)
   }

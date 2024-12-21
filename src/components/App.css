@@ -50,7 +50,7 @@ code {
 code p{
   margin-bottom: 0.5rem;
 }
-
+  
 .favourite-on .on,
 .favourite-off .off {
   display: block !important;
@@ -71,15 +71,6 @@ code p{
   .favourite-off:hover .off {
     display: none !important;
   }
-}
-
-.table {
-  --bs-table-color-type: unset;
-  --bs-table-bg-type: unset;
-  --bs-table-color-state: unset;
-  --bs-table-bg-state: unset;
-  --bs-table-color: unset;
-  --bs-table-border-color: unset;
 }
 
 pre.pre-wrap {
