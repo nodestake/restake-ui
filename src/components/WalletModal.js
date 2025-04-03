@@ -10,9 +10,10 @@ import {
 } from 'react-bootstrap'
 
 import Address from './Address.js';
-import Coins from './Coins.js';
+import Coin from './Coin.js';
 import Favourite from './Favourite.js';
 import SavedAddresses from './SavedAddresses.js';
+import Coins from './Coins.js';
 
 function WalletModal(props) {
   const { show, network, wallet, favouriteAddresses } = props
@@ -32,18 +33,7 @@ function WalletModal(props) {
 
   if(!network) return null
 
-  // const balances = _.sortBy((props.balances || []).map(balance => {
-  const balances = _.sortBy((props.balances || []).filter(el => el.denom === network.denom).map(balance => {
-    const asset = network.assets.find(a => a.base?.denom === balance.denom)
-    return {
-      ...balance,
-      asset
-    }
-  }), ({ asset }) => {
-    if(!asset) return 0
-    if(network.denom === asset.base?.denom) return -2
-    return -1
-  })
+  const balances = props.balances?.length ? props.balances : [{amount: 0, denom: network.denom}]
 
   return (
     <>
@@ -71,7 +61,7 @@ function WalletModal(props) {
                         <td scope="row">Wallet Provider</td>
                         <td className="text-break">
                           <div className="d-flex gap-2">
-                            {props.signerProvider?.label || 'None'}
+                            {wallet.signerProvider?.label || 'None'}
                           </div>
                         </td>
                       </tr>
@@ -91,23 +81,18 @@ function WalletModal(props) {
                           <div className="d-flex gap-2">
                             <Address address={wallet.address} />
                             <Favourite
-                              favourites={favouriteAddresses[network.path] || []}
-                              value={wallet.address}
-                              label={props.address === wallet?.address && wallet.name}
-                              toggle={props.toggleFavouriteAddress} />
+                              value={(favouriteAddresses[network.path] || []).some(el => el['address'] === wallet.address)}
+                              toggle={() => props.toggleFavouriteAddress(wallet.address, props.address === wallet?.address && wallet.name)}
+                              onTooltip="Remove saved address"
+                              offTooltip="Save address"
+                            />
                           </div>
                         </td>
                       </tr>
                       <tr>
                         <td scope="row">Balance</td>
                         <td className="text-break">
-                          {balances.map(balance => {
-                            return (
-                              <div key={balance.denom} className="d-flex align-items-center gap-2">
-                                <Coins coins={balance} asset={balance.asset} />
-                              </div>
-                            )
-                          })}
+                          <Coins coins={balances} network={network} fullPrecision={true} />
                         </td>
                       </tr>
                     </tbody>

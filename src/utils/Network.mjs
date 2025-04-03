@@ -3,11 +3,12 @@ import { multiply, pow, format, bignumber, number, larger } from 'mathjs'
 import {
   GasPrice,
 } from "@cosmjs/stargate";
-import QueryClient from './QueryClient.mjs'
+import RestClient from './RestClient.mjs'
 import Validator from './Validator.mjs'
 import Operator from './Operator.mjs'
 import Chain from './Chain.mjs'
 import CosmosDirectory from './CosmosDirectory.mjs'
+import SkipApi from './SkipApi.mjs';
 
 class Network {
   constructor(data, operatorAddresses) {
@@ -60,11 +61,15 @@ class Network {
   }
 
   async load() {
-    const chainData = await this.directory.getChainData(this.data.name);
-    this.setChain({...this.data, ...chainData})
-    this.validators = (await this.directory.getValidators(this.name)).map(data => {
-      return Validator(this, data)
-    })
+    const [chainData, validatorsData, skipAssets] = await Promise.all([
+      this.directory.getChainData(this.path),
+      this.directory.getValidators(this.path),
+      SkipApi().getAssets(this.chainId)
+    ]);
+    this.setChain({...this.data, ...chainData}, skipAssets);
+    this.validators = validatorsData.map(data => {
+      return Validator(this, data);
+    });
     const operators = (this.data.operators || this.validators.filter(el => el.restake && this.allowOperator(el.operator_address))).map(data => {
       return Operator(this, data)
     })
@@ -76,8 +81,8 @@ class Network {
     }
   }
 
-  async setChain(data){
-    this.chain = Chain(data)
+  async setChain(data, assets){
+    this.chain = Chain(data, assets)
     this.prettyName = this.chain.prettyName
     this.chainId = this.chain.chainId
     this.prefix = this.chain.prefix
@@ -85,12 +90,12 @@ class Network {
     this.assets = this.chain.assets
     this.baseAsset = this.chain.baseAsset
     this.denom = this.chain.denom
-    this.display = this.chain.display
     this.symbol = this.chain.symbol
     this.decimals = this.chain.decimals
     this.image = this.chain.image
     this.coinGeckoId = this.chain.coinGeckoId
     this.estimatedApr = this.chain.estimatedApr
+    this.ethermint = this.chain.ethermint
     this.apyEnabled = data.apyEnabled !== false && !!this.estimatedApr && this.estimatedApr > 0
     this.ledgerSupport = this.chain.ledgerSupport ?? true
     this.authzSupport = this.chain.authzSupport
@@ -101,6 +106,7 @@ class Network {
     this.aminoPreventTypes = this.chain.aminoPreventTypes
     this.restakeSupport = this.chain.restakeSupport
     this.restakeAlert = data.restakeAlert
+    this.networkAlert = data.networkAlert
     this.txTimeout = this.data.txTimeout || 60_000
     this.keywords = this.buildKeywords()
 
@@ -130,14 +136,13 @@ class Network {
     this.gasModifier = this.data.gasModifier || 1.5
   }
 
-  async connect(opts) {
+  async connect() {
     try {
-      this.queryClient = await QueryClient(this.chain.chainId, this.restUrl, {
-        connectTimeout: opts?.timeout,
+      this.restClient = await RestClient(this.chain.chainId, this.restUrl, {
         apiVersions: this.chain.apiVersions
       })
-      this.restUrl = this.queryClient.restUrl
-      this.connected = this.queryClient.connected && (!this.usingDirectory || this.connectedDirectory())
+      this.restUrl = this.restClient.restUrl
+      this.connected = this.restClient.connected && (!this.usingDirectory || this.connectedDirectory())
     } catch (error) {
       console.log(error)
       this.connected = false
@@ -201,7 +206,7 @@ class Network {
   }
 
   assetForDenom(denom){
-    return this.assets.find(el => el.base.denom === denom)
+    return this.assets.find(el => el.denom === denom)
   }
 }
 

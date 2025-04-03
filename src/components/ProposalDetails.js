@@ -11,7 +11,7 @@ import {
   Nav
 } from 'react-bootstrap'
 
-import Coins from './Coins';
+import Coin from './Coin';
 import ProposalProgress from './ProposalProgress';
 import ProposalMessages from './ProposalMessages';
 import VoteForm from './VoteForm';
@@ -30,19 +30,19 @@ function ProposalDetails(props) {
 
   const transformHTMLString = (htmlString, isSpam) => {
     let transformedString = htmlString;
-  
+
     // Transform headings
     transformedString = transformedString.replace(/<h[2-6]>(.*?)<\/h[2-6]>/g, '<h6>$1</h6>');
     transformedString = transformedString.replace(/<h1>(.*?)<\/h1>/g, '<h5>$1</h5>');
-  
+
     // Remove all <a> tags if proposal is spam
     if (isSpam) {
       transformedString = transformedString.replace(/<a[^>]*>(.*?)<\/a>/g, '<span>$1</span>');
     }
-  
+
     // Apply table class
     transformedString = transformedString.replace(/<table>/g, '<table class="table">');
-  
+
     return transformedString;
   };
 
@@ -58,7 +58,7 @@ function ProposalDetails(props) {
 
   useEffect(() => {
     if(granter){
-      props.queryClient.getProposalVote(proposal_id, granter).then(result => {
+      network.restClient.getProposalVote(proposal_id, granter).then(result => {
         return setGranterVote(Vote(result.vote))
       }).catch(error => {
         setGranterVote(null)
@@ -102,7 +102,14 @@ function ProposalDetails(props) {
               </tr>
               <tr>
                 <td scope="row">Type</td>
-                <td>{proposal.typeHuman}</td>
+                <td>
+                  <div>
+                    {proposal.typeHuman}
+                  </div>
+                  {proposal.messages && proposal.messages.length > 3 ? (
+                    <span className="text-muted">and {(proposal.messages.length - 3).toLocaleString(undefined)} more...</span>
+                  ) : null}
+                </td>
               </tr>
               {!proposal.isDeposit && (
                 <>
@@ -137,8 +144,8 @@ function ProposalDetails(props) {
                   <tr>
                     <td scope="row">Total deposit</td>
                     <td>
-                      {proposal.total_deposit.map(coins => {
-                        return <Coins key={coins.denom} coins={coins} asset={network.baseAsset} />
+                      {proposal.total_deposit.map(coin => {
+                        return <Coin key={coin.denom} {...coin} asset={network.baseAsset} />
                       })}
                     </td>
                   </tr>
@@ -151,7 +158,7 @@ function ProposalDetails(props) {
           <div className="col-12 col-lg-6">
             <p className="mb-2">
               {props.granters.length > 0 ? (
-                <select className="form-select form-select-sm" aria-label="Granter" value={granter} onChange={(e) => setGranter(e.target.value)}>
+                <select className="form-select form-select-sm" aria-label="Granter" disabled={!proposal.isVoting} value={granter} onChange={(e) => setGranter(e.target.value)}>
                   <option value="">Your vote</option>
                   <optgroup label="Authz Grants">
                     {props.granters.map(granterAddress => {
@@ -171,7 +178,6 @@ function ProposalDetails(props) {
               address={props.address}
               wallet={props.wallet}
               granter={granter}
-              signingClient={props.signingClient}
               onVote={onVote}
               setError={setError} />
           </div>
@@ -197,7 +203,7 @@ function ProposalDetails(props) {
             <div className="row mt-3">
               <div className="col">
                 <h5 className="mb-3">{title}</h5>
-                <div dangerouslySetInnerHTML={{ __html: transformedDescription }}></div>
+                <div className="proposal-content" dangerouslySetInnerHTML={{ __html: transformedDescription }}></div>
               </div>
             </div>
           </Tab.Pane>

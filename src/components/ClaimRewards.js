@@ -1,63 +1,32 @@
-import { MsgWithdrawDelegatorReward, MsgWithdrawValidatorCommission } from "cosmjs-types/cosmos/distribution/v1beta1/tx";
-import { MsgDelegate } from "cosmjs-types/cosmos/staking/v1beta1/tx";
-import { buildExecableMessage, buildExecMessage, coin, rewardAmount } from "../utils/Helpers.mjs";
+import { coin, execableMessage, rewardAmount } from "../utils/Helpers.mjs";
 
 import {
   Dropdown,
   Button
 } from 'react-bootstrap'
 
-import { add, subtract, multiply, divide, bignumber } from 'mathjs'
+import { MsgDelegate } from "../messages/MsgDelegate.mjs";
+import { MsgWithdrawDelegatorReward } from "../messages/MsgWithdrawDelegatorReward.mjs";
+import { MsgWithdrawValidatorCommission } from "../messages/MsgWithdrawValidatorCommission.mjs";
+import { smallerEq } from "mathjs";
 
 function ClaimRewards(props) {
-  const { network, address, wallet, signingClient, rewards } = props
+  const { network, address, wallet, rewards } = props
 
   async function claim(){
     props.setError()
     props.setLoading(true)
 
-    const validatorRewards = mapRewards()
-    const gasSimMessages = buildMessages(validatorRewards)
-
-    let gas
+    let messages
     try {
-      gas = await signingClient.simulate(wallet.address, gasSimMessages)
+      messages = await buildMessages()
     } catch (error) {
       props.setLoading(false)
-      props.setError('Failed to broadcast: ' + error.message)
+      props.setError(error.message)
       return
     }
 
-    const fee = signingClient.getFee(gas)
-    const feeAmount = fee.amount[0].amount
-
-    const totalReward = validatorRewards.reduce((sum, validatorReward) => add(sum, bignumber(validatorReward.reward)), 0);
-    const adjustedValidatorRewards = validatorRewards.map(validatorReward => {
-      const shareOfFee = multiply(divide(bignumber(validatorReward.reward), totalReward), feeAmount); // To take a proportional amount from each validator relative to total reward
-      return {
-        validatorAddress: validatorReward.validatorAddress,
-        reward: subtract(validatorReward.reward, shareOfFee),
-      }
-    })
-
-    if(!props.commission && (adjustedValidatorRewards.length < 1 || adjustedValidatorRewards.some(validatorReward => validatorReward.reward <= 0))) {
-      props.setLoading(false)
-      props.setError('Reward is too low')
-      return
-    }
-
-    let messages = buildMessages(adjustedValidatorRewards)
-    try {
-      gas = gas || await signingClient.simulate(wallet.address, messages)
-    } catch (error) {
-      props.setLoading(false)
-      props.setError('Failed to broadcast: ' + error.message)
-      return
-    }
-    console.log(messages, gas)
-
-    const signAndBroadcast = signingClient.signAndBroadcastWithoutBalanceCheck
-    signAndBroadcast(wallet.address, messages, gas).then((result) => {
+    wallet.signAndBroadcastWithoutBalanceCheck(messages).then((result) => {
       console.log("Successfully broadcasted:", result);
       props.setLoading(false)
       props.onClaimRewards(result)
@@ -68,51 +37,36 @@ function ClaimRewards(props) {
     })
   }
 
-  function mapRewards() {
-    if (!rewards) return [];
-
-    const validatorRewards = rewards
-      .map(reward => {
-        return {
-          validatorAddress: reward.validator_address,
-          reward: rewardAmount(reward, network.denom),
-        }
-      })
-      .filter(validatorReward => validatorReward.reward );
-
-    return validatorRewards;
-  }
-
-  // Expects a map of string -> string (validator -> reward)
-  function buildMessages(validatorRewards){
-    return validatorRewards.map(validatorReward => {
+  function buildMessages(){
+    const messages = rewards.map(validatorRewards => {
       let valMessages = []
 
       if(props.restake){
-        valMessages.push(buildExecableMessage(MsgDelegate, "/cosmos.staking.v1beta1.MsgDelegate", {
+        const denomReward = rewardAmount(validatorRewards, network.denom)
+        if(smallerEq(denomReward, 0)){
+          throw new Error(`You have no ${network.symbol} rewards to compound`)
+        }
+        valMessages.push(new MsgDelegate({
           delegatorAddress: address,
-          validatorAddress: validatorReward.validatorAddress,
-          amount: coin(validatorReward.reward, network.denom)
-        }, wallet?.address !== address))
+          validatorAddress: validatorRewards.validator_address,
+          amount: coin(denomReward, network.denom)
+        }))
       }else{
-        valMessages.push(buildExecableMessage(MsgWithdrawDelegatorReward, "/cosmos.distribution.v1beta1.MsgWithdrawDelegatorReward", {
+        valMessages.push(new MsgWithdrawDelegatorReward({
           delegatorAddress: address,
-          validatorAddress: validatorReward.validatorAddress
-        }, wallet?.address !== address))
-      }
-      
-      if (props.commission) {
-        valMessages.push(buildExecableMessage(MsgWithdrawValidatorCommission, "/cosmos.distribution.v1beta1.MsgWithdrawValidatorCommission", {
-          validatorAddress: validatorReward.validatorAddress
-        }, wallet?.address !== address))
-      }
+          validatorAddress: validatorRewards.validator_address
+        }))
 
-      if (wallet?.address !== address) {
-        return [buildExecMessage(wallet.address, valMessages)]
-      }else{
-        return valMessages
+        if (props.commission) {
+          valMessages.push(new MsgWithdrawValidatorCommission({
+            validatorAddress: validatorRewards.validator_address
+          }))
+        }
       }
+      return valMessages
     }).flat()
+
+    return execableMessage(messages, wallet.address, address)
   }
 
   function hasPermission(){

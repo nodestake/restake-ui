@@ -2,21 +2,19 @@ import React, { useState, useEffect, useReducer } from 'react';
 import moment from 'moment'
 import { pow, multiply, divide, larger, bignumber } from 'mathjs'
 
-import { MsgGrant } from "cosmjs-types/cosmos/authz/v1beta1/tx";
-import { StakeAuthorization } from "cosmjs-types/cosmos/staking/v1beta1/authz";
-import { GenericAuthorization } from "cosmjs-types/cosmos/authz/v1beta1/authz";
-import { Timestamp } from "cosmjs-types/google/protobuf/timestamp";
-
 import {
   Button,
   Form,
 } from 'react-bootstrap'
 
-import Coins from './Coins';
-import { buildExecMessage, coin, rewardAmount } from '../utils/Helpers.mjs';
+import Coin from './Coin';
+import { coin, execableMessage, rewardAmount } from '../utils/Helpers.mjs';
 import RevokeGrant from './RevokeGrant';
 import AlertMessage from './AlertMessage';
 import OperatorLastRestakeAlert from './OperatorLastRestakeAlert';
+import { GenericAuthorization } from '../messages/authorizations/GenericAuthorization.mjs';
+import { StakeAuthorization } from '../messages/authorizations/StakeAuthorization.mjs';
+import { MsgGrant } from '../messages/MsgGrant.mjs';
 
 function REStakeGrantForm(props) {
   const { grants, wallet, operator, address, network, lastExec } = props
@@ -31,6 +29,18 @@ function REStakeGrantForm(props) {
   const genericGrantOnly = wallet.signAminoSupportOnly() && network.authzAminoGenericOnly
 
   const reward = rewardAmount(props.rewards, network.denom)
+
+  useEffect(() => {
+    if(!address) return
+
+    network.restClient.getWithdrawAddress(address).then(withdraw => {
+      if (withdraw !== address) {
+        setError('You have a different withdraw address set. REStake WILL NOT WORK!')
+      }
+    }, error => {
+      console.log('Failed to get withdraw address', error)
+    })
+  }, [address])
 
   useEffect(() => {
     setState({
@@ -82,31 +92,29 @@ function REStakeGrantForm(props) {
       maxTokens = coin(maxTokensDenom(), network.denom)
     }
 
-    let messages
+    let authorization
     if(genericGrantOnly){
-      messages = [
-        buildGrantMsg("/cosmos.authz.v1beta1.GenericAuthorization",
-          GenericAuthorization.encode(GenericAuthorization.fromPartial({
-            msg: '/cosmos.staking.v1beta1.MsgDelegate'
-          })).finish(),
-          expiry
-        )
-      ]
+      authorization = new GenericAuthorization({
+        msg: '/cosmos.staking.v1beta1.MsgDelegate'
+      })
     }else{
-      messages = [
-        buildGrantMsg("/cosmos.staking.v1beta1.StakeAuthorization",
-          StakeAuthorization.encode(StakeAuthorization.fromPartial({
-            allowList: { address: [operator.address] },
-            maxTokens: maxTokens,
-            authorizationType: 1
-          })).finish(),
-          expiry
-        )
-      ]
+      authorization = new StakeAuthorization({
+        allowList: { address: [operator.address] },
+        maxTokens: maxTokens,
+        authorizationType: 1
+      })
     }
-    console.log(messages)
 
-    props.signingClient.signAndBroadcast(wallet.address, messages).then((result) => {
+    const message = new MsgGrant({
+      granter: address,
+      grantee: operator.botAddress,
+      grant: {
+        authorization: authorization,
+        expiration: expiry.unix()
+      }
+    })
+
+    wallet.signAndBroadcast(execableMessage(message, wallet.address, address)).then((result) => {
       console.log("Successfully broadcasted:", result);
       showLoading(false)
       props.onGrant(operator.botAddress, {
@@ -129,41 +137,13 @@ function REStakeGrantForm(props) {
     })
   }
 
-  function buildGrantMsg(type, authValue, expiryDate) {
-    const value = {
-      granter: address,
-      grantee: operator.botAddress,
-      grant: {
-        authorization: {
-          typeUrl: type,
-          value: authValue
-        },
-        expiration: Timestamp.fromPartial({
-          seconds: expiryDate.unix(),
-          nanos: 0
-        })
-      }
-    }
-    if (wallet?.address !== address) {
-      return buildExecMessage(wallet.address, [{
-        typeUrl: "/cosmos.authz.v1beta1.MsgGrant",
-        value: MsgGrant.encode(MsgGrant.fromPartial(value)).finish()
-      }])
-    } else {
-      return {
-        typeUrl: "/cosmos.authz.v1beta1.MsgGrant",
-        value: value
-      }
-    }
-  }
-
   function grantInformation() {
     return (
       <>
         <p className="small">{operator.moniker} will be able to carry out the following transactions on your behalf:</p>
-        <p className="small"><strong>Delegate</strong> - allowed to delegate <em>{maxTokensDenom() ? <Coins coins={{ amount: maxTokensDenom(), denom: network.denom }} asset={network.baseAsset} fullPrecision={true} hideValue={true} /> : 'any amount'}</em> to <em>{!state.validators ? 'any validator' : !state.validators.length || (state.validators.length === 1 && state.validators.includes(operator.address)) ? 'only their own validator' : 'validators ' + state.validators.join(', ')}</em>.</p>
-        <p className="small">This grant will expire automatically on <em>{state.expiryDateValue}</em>.</p>
-        <p className="small">REStake only re-delegates {operator.moniker}'s accrued rewards and tries not to touch your balance.</p>
+        <p className="small"><strong>Delegate</strong> - allowed to delegate <em>{maxTokensDenom() ? <>a maximum of <Coin amount={maxTokensDenom()} denom={network.denom} asset={network.baseAsset} fullPrecision={true} showImage={false} showValue={false} /></> : 'any amount'}</em> to <em>{!state.validators ? 'any validator' : !state.validators.length || (state.validators.length === 1 && state.validators.includes(operator.address)) ? 'only their own validator' : 'validators ' + state.validators.join(', ')}</em>.</p>
+        <p className="small">This grant will expire automatically on <em>{state.expiryDateValue}</em> and you can revoke it at any time.</p>
+        <p className="small">{operator.moniker} will only auto-compound their accrued rewards and tries not to touch your balance.<br /><strong>They will pay the transaction fees for you.</strong></p>
         {genericGrantOnly && (
           <p className="small"><em>{network.prettyName} only supports generic Authz grants with this wallet, full support is coming soon.</em></p>
         )}
@@ -230,7 +210,6 @@ function REStakeGrantForm(props) {
                     operator={operator}
                     grants={[grants.stakeGrant, grants.claimGrant]}
                     grantAddress={operator.botAddress}
-                    signingClient={props.signingClient}
                     onRevoke={props.onRevoke}
                     setLoading={(loading) => showLoading(loading)}
                     setError={setError}

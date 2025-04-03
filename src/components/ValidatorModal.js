@@ -15,6 +15,7 @@ import {
 
 import ValidatorStake from './ValidatorStake';
 import ValidatorProfile from './ValidatorProfile';
+import ValidatorCalculator from './ValidatorCalculator';
 
 function ValidatorModal(props) {
   const { validator, delegations, operators, network, validators, grants } = props
@@ -30,9 +31,12 @@ function ValidatorModal(props) {
   }
 
   useEffect(() => {
-    setRegistryData()
     setLastExec()
   }, [validator]);
+
+  useEffect(() => {
+    setRegistryData()
+  }, [validator?.path]);
 
   useEffect(() => {
     if(registryData == null){
@@ -105,7 +109,7 @@ function ValidatorModal(props) {
 
     const key = network.chain.sdk50OrLater ? 'query' : 'events'
 
-    network.queryClient.getTransactions([
+    network.restClient.getTransactions([
       // { key: key, value: `message.action='/cosmos.authz.v1beta1.MsgExec'` },
       { key: key, value: `message.sender='${operator.botAddress}'` }
     ], {
@@ -150,6 +154,9 @@ function ValidatorModal(props) {
                 <Nav.Item>
                   <Nav.Link role="button" eventKey="stake">Stake</Nav.Link>
                 </Nav.Item>
+                <Nav.Item>
+                  <Nav.Link role="button" eventKey="calculator">Calculator</Nav.Link>
+                </Nav.Item>
                 {network.authzSupport && !network.authzAminoSupport && operator && (
                   <Nav.Item className="d-none d-md-flex">
                     <Nav.Link role="button" eventKey="ledger">Ledger</Nav.Link>
@@ -186,12 +193,19 @@ function ValidatorModal(props) {
                     validatorApy={props.validatorApy}
                     authzSupport={props.authzSupport}
                     restakePossible={props.restakePossible}
-                    signingClient={props.signingClient}
                     isLoading={props.isLoading}
                     onDelegate={props.onDelegate}
                     onClaimRewards={props.onClaimRewards}
                     onGrant={props.onGrant}
                     onRevoke={props.onRevoke}
+                  />
+                </Tab.Pane>
+                <Tab.Pane eventKey="calculator">
+                  <ValidatorCalculator
+                    network={network}
+                    validator={validator}
+                    operator={operator}
+                    delegation={delegations && delegations[validator.address]}
                   />
                 </Tab.Pane>
                 {network.authzSupport && !network.authzAminoSupport && operator && (

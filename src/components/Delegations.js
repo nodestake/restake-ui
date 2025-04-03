@@ -1,6 +1,6 @@
 import React from "react";
 import _ from "lodash";
-import { larger, bignumber } from 'mathjs'
+import { larger, largerEq, bignumber, add } from 'mathjs'
 import AlertMessage from "./AlertMessage";
 import ClaimRewards from "./ClaimRewards";
 import ValidatorModal from "./ValidatorModal";
@@ -41,8 +41,6 @@ class Delegations extends React.Component {
   }
 
   async componentDidMount() {
-    const walletAuthzSupport = this.props.wallet?.authzSupport();
-    this.setState({ walletAuthzSupport });
     this.refresh(true);
 
     if (this.props.validator) {
@@ -58,9 +56,7 @@ class Delegations extends React.Component {
     if ((this.props.network !== prevProps.network && !this.props.address)
       || (this.props.address !== prevProps.address)) {
       this.clearRefreshInterval()
-      const walletAuthzSupport = this.props.wallet?.authzSupport();
       this.setState({
-        walletAuthzSupport: walletAuthzSupport,
         delegations: undefined,
         rewards: undefined,
         commission: {},
@@ -80,20 +76,22 @@ class Delegations extends React.Component {
     this.clearRefreshInterval()
   }
 
+  restClient() {
+    return this.props.network.restClient
+  }
+
   async refresh(getGrants) {
     this.calculateApy();
     await this.getDelegations()
     if (getGrants){
       this.getGrants()
     }
-    this.getWithdrawAddress();
     this.getRewards();
     this.refreshInterval();
   }
 
   refreshInterval() {
     const refreshInterval = setInterval(() => {
-      this.props.getBalance();
       this.getRewards(true);
     }, 15_000);
     const delegateInterval = setInterval(() => {
@@ -111,7 +109,7 @@ class Delegations extends React.Component {
     if(!this.props.address) return
     const address = this.props.address
 
-    return this.props.queryClient.getDelegations(address)
+    return this.restClient().getDelegations(address)
       .then(
         (delegations) => {
           const orderedAddresses = Object.keys(this.props.validators)
@@ -145,27 +143,23 @@ class Delegations extends React.Component {
       )
   }
 
-  async getWithdrawAddress() {
-    if(!this.props.address) return
-    const address = this.props.address
-
-    return this.props.queryClient.getWithdrawAddress(address).then(withdraw => {
-      if (withdraw !== address) {
-        this.setState({ error: 'You have a different withdraw address set. REStake WILL NOT WORK!' })
-      }
-    }, error => {
-      console.log('Failed to get withdraw address', error)
-    })
-  }
-
   getRewards(hideError) {
     if(!this.props.address) return
 
-    this.props.queryClient
+    this.restClient()
       .getRewards(this.props.address, this.props.network.denom)
       .then(
         (rewards) => {
-          this.setState({ rewards: rewards });
+          this.setState({ rewards: rewards.reduce((sum, reward) => {
+            const validatorRewards = reward.reward.filter(reward => largerEq(reward.amount, 1))
+            if(validatorRewards.length > 0){
+              sum[reward.validator_address] = {
+                validator_address: reward.validator_address,
+                reward: validatorRewards
+              }
+            }
+            return sum
+          }, {}) });
         },
         (error) => {
           if ([404, 500].includes(error.response && error.response.status) && !this.state.rewards) {
@@ -179,12 +173,12 @@ class Delegations extends React.Component {
 
     Object.values(this.props.validators).forEach(validator => {
       if(validator.isValidatorOperator(this.props.address)){
-        this.props.queryClient.getCommission(validator.address).then((commission) => {
+        this.restClient().getCommission(validator.address).then((commission) => {
           this.setState((state, props) => ({
             commission: _.set(
               state.commission,
               validator.address,
-              commission
+              { commission: commission.filter(comm => largerEq(comm.amount, 1)) }
             ),
           }));
         })
@@ -323,7 +317,7 @@ class Delegations extends React.Component {
         grantsValid: !!(
           grant.stakeGrant &&
           (!grant.validators || grant.validators.includes(operator.address)) &&
-          (grant.maxTokens === null || larger(grant.maxTokens, rewardAmount(this.state.rewards, this.props.network.denom)))
+          (grant.maxTokens === null || larger(grant.maxTokens, rewardAmount(this.state.rewards?.[operator.address], this.props.network.denom)))
         ),
         grantsExist: !!(grant.claimGrant || grant.stakeGrant),
       }
@@ -332,7 +326,7 @@ class Delegations extends React.Component {
   }
 
   restakePossible() {
-    return this.props.address && this.state.walletAuthzSupport && this.restakeSupport();
+    return this.props.address && this.props.wallet?.authzSupport() && this.restakeSupport();
   }
 
   totalRewards(validators) {
@@ -341,12 +335,8 @@ class Delegations extends React.Component {
     const denom = this.props.network.denom;
     const total = Object.values(this.state.rewards).reduce((sum, item) => {
       const reward = item.reward.find((el) => el.denom === denom);
-      if (
-        reward &&
-        (validators === undefined ||
-          validators.includes(item.validator_address))
-      ) {
-        return sum + parseInt(reward.amount);
+      if (reward && (validators === undefined || validators.includes(item.validator_address))) {
+        return add(sum, reward.amount)
       }
       return sum;
     }, 0);
@@ -391,7 +381,6 @@ class Delegations extends React.Component {
         grants={this.operatorGrants()}
         authzSupport={this.authzSupport()}
         restakePossible={this.restakePossible()}
-        signingClient={this.props.signingClient}
         isLoading={this.isLoading}
         hideModal={this.hideValidatorModal}
         onDelegate={this.onClaimRewards}
@@ -401,6 +390,18 @@ class Delegations extends React.Component {
         setError={this.setError}
       />
     )
+  }
+
+  restakeAlertProps() {
+    if(!this.props.network.restakeAlert) return {}
+
+    let props = { variant: 'info', dismissible: false }
+    if(typeof this.props.network.restakeAlert === 'string'){
+      props = { ...props, message: this.props.network.restakeAlert }
+    }else{
+      props = { ...props, ...this.props.network.restakeAlert }
+    }
+    return props
   }
 
   render() {
@@ -417,19 +418,17 @@ class Delegations extends React.Component {
     const alerts = (
       <>
         {this.props.network.restakeAlert && (
-          <AlertMessage variant="info" dismissible={false}>
-            {this.props.network.restakeAlert}
-          </AlertMessage>
+          <AlertMessage {...this.restakeAlertProps()} />
         )}
         {!this.authzSupport() && (
           <AlertMessage variant="info" dismissible={false}>
-            {this.props.network.prettyName} doesn't support Authz just yet. You can stake and compound manually, REStake will update automatically when support is added.
+            {this.props.network.prettyName} doesn't support Authz just yet. You can stake and compound manually until support is added.
           </AlertMessage>
         )}
         {this.authzSupport() &&
           this.props.operators.length > 0 &&
           this.props.wallet &&
-          !this.state.walletAuthzSupport && (
+          !this.props.wallet.authzSupport() && (
             <>
               <AlertMessage
                 variant="warning"
@@ -463,7 +462,6 @@ class Delegations extends React.Component {
             delegations={this.state.delegations}
             rewards={this.state.rewards}
             commission={this.state.commission}
-            signingClient={this.props.signingClient}
             operatorGrants={this.operatorGrants()}
             authzSupport={this.authzSupport()}
             restakePossible={this.restakePossible()}
@@ -492,22 +490,22 @@ class Delegations extends React.Component {
                         </Dropdown.Item>
                         <hr />
                         <ClaimRewards
+                          disabled={!rewards}
                           network={network}
                           address={address}
                           wallet={wallet}
                           rewards={[rewards]}
-                          signingClient={this.props.signingClient}
                           onClaimRewards={this.onClaimRewards}
                           setLoading={(loading) => this.setValidatorLoading(validatorAddress, loading)}
                           setError={this.setError}
                         />
                         <ClaimRewards
+                          disabled={!rewards || !rewardAmount(rewards, network.denom)}
                           restake={true}
                           network={network}
                           address={address}
                           wallet={wallet}
                           rewards={[rewards]}
-                          signingClient={this.props.signingClient}
                           onClaimRewards={this.onClaimRewards}
                           setLoading={(loading) => this.setValidatorLoading(validatorAddress, loading)}
                           setError={this.setError}
@@ -516,12 +514,12 @@ class Delegations extends React.Component {
                           <>
                             <hr />
                             <ClaimRewards
+                              disabled={!rewards}
                               commission={true}
                               network={network}
                               address={address}
                               wallet={wallet}
                               rewards={[rewards]}
-                              signingClient={this.props.signingClient}
                               onClaimRewards={this.onClaimRewards}
                               setLoading={(loading) => this.setValidatorLoading(validatorAddress, loading)}
                               setError={this.setError}
@@ -559,7 +557,6 @@ class Delegations extends React.Component {
                     <Dropdown.Toggle
                       variant="secondary"
                       id="claim-dropdown"
-                      disabled={this.totalRewards().amount === 0}
                     >
                       All Rewards
                     </Dropdown.Toggle>
@@ -570,18 +567,17 @@ class Delegations extends React.Component {
                         address={this.props.address}
                         wallet={this.props.wallet}
                         rewards={Object.values(this.state.rewards || {})}
-                        signingClient={this.props.signingClient}
                         onClaimRewards={this.onClaimRewards}
                         setLoading={this.setClaimLoading}
                         setError={this.setError}
                       />
                       <ClaimRewards
+                        disabled={!this.totalRewards().amount}
                         restake={true}
                         network={this.props.network}
                         address={this.props.address}
                         wallet={this.props.wallet}
                         rewards={Object.values(this.state.rewards || {})}
-                        signingClient={this.props.signingClient}
                         onClaimRewards={this.onClaimRewards}
                         setLoading={this.setClaimLoading}
                         setError={this.setError}
@@ -603,7 +599,7 @@ class Delegations extends React.Component {
         </div>
         <hr />
         <p className="mt-5 text-center">
-          Enabling REStake will authorize the validator to send <em>Delegate</em> transactions on your behalf for 1 year <a href="https://docs.cosmos.network/master/modules/authz/" target="_blank" rel="noreferrer" className="text-reset">using Authz</a>.<br />
+          Enabling REStake will authorize the validator to send <em>Delegate</em> transactions on your behalf <a href="https://docs.cosmos.network/main/modules/authz/" target="_blank" rel="noreferrer" className="text-reset">using Authz</a>.<br />
           They will only be authorized to delegate to their own validator. You can revoke the authorization at any time and everything is open source.
         </p>
         <p className="text-center mb-4">

@@ -13,7 +13,7 @@ import { XCircle } from "react-bootstrap-icons";
 
 import AlertMessage from './AlertMessage';
 import RevokeGrant from './RevokeGrant';
-import Coins from './Coins';
+import Coin from './Coin';
 import GrantModal from './GrantModal';
 import Favourite from './Favourite';
 import Address from './Address'
@@ -101,7 +101,7 @@ function Grants(props) {
         const restrictionList = grant.authorization.allow_list || grant.authorization.deny_list
         return (
           <small>
-            Maximum: {maxTokens ? <Coins coins={maxTokens} asset={network.baseAsset} fullPrecision={true} hideValue={true} /> : 'unlimited'}<br />
+            Maximum: {maxTokens ? <Coin {...maxTokens} asset={network.baseAsset} fullPrecision={true} showValue={false} showImage={false} /> : 'unlimited'}<br />
             {restrictionType}: {restrictionList.address.map(address => {
               const validator = validators[address]
               return address ? <div key={address}>{validator?.moniker || <Address address={address} />}</div> : null
@@ -144,7 +144,12 @@ function Grants(props) {
         <td className="text-break">
           {filter.group === 'grantee' ? (
             <div className="d-flex">
-              <Favourite favourites={props.favouriteAddresses} value={granter} toggle={props.toggleFavouriteAddress} />
+              <Favourite
+                value={props.favouriteAddresses.some(el => el['address'] === granter)}
+                toggle={() => props.toggleFavouriteAddress(granter)}
+                onTooltip="Remove saved address"
+                offTooltip="Save address"
+              />
               <span className="ps-2">{favourite?.label || <Address address={granter} />}</span>
             </div>
           ) : (
@@ -173,7 +178,6 @@ function Grants(props) {
                   button={true}
                   size="sm"
                   grants={[grant]}
-                  signingClient={props.signingClient}
                   onRevoke={onRevoke}
                   setLoading={(loading) =>
                     setGrantLoading({ [grantId]: loading })
@@ -299,7 +303,6 @@ function Grants(props) {
         address={props.address}
         wallet={props.wallet}
         favouriteAddresses={props.favouriteAddresses}
-        signingClient={props.signingClient}
         onHide={closeModal}
         onGrant={onGrant}
       />

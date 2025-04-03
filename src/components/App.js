@@ -5,10 +5,8 @@ import _ from 'lodash'
 import AlertMessage from './AlertMessage'
 import NetworkSelect from './NetworkSelect'
 import Delegations from './Delegations';
-import Coins from './Coins'
+import Coin from './Coin'
 import About from './About'
-
-import { MsgGrant, MsgRevoke } from "cosmjs-types/cosmos/authz/v1beta1/tx.js";
 
 import {
   Container,
@@ -23,7 +21,7 @@ import {
   DropletFill,
   DropletHalf,
   CashCoin,
-  Coin,
+  Coin as CoinIcon,
   EnvelopePaper,
   Stars,
   WrenchAdjustableCircle,
@@ -32,7 +30,8 @@ import {
   Clipboard,
   ClipboardCheck,
   Eye,
-  Key
+  Key,
+  CurrencyExchange
 } from 'react-bootstrap-icons'
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import GitHubButton from 'react-github-btn'
@@ -49,16 +48,15 @@ import TooltipIcon from './TooltipIcon';
 import Voting from './Voting';
 import Networks from './Networks';
 import Grants from './Grants';
+import Swap from './Swap';
 import Favourite from './Favourite';
 import WalletModal from './WalletModal';
 import Wallet from '../utils/Wallet.mjs';
 import SendModal from './SendModal';
 import KeplrSignerProvider from '../utils/KeplrSignerProvider.mjs';
 import LeapSignerProvider from '../utils/LeapSignerProvider.mjs';
-import ConnectWalletModal from './ConnectWalletModal';
 import { truncateAddress } from '../utils/Helpers.mjs';
 import CosmostationSignerProvider from '../utils/CosmostationSignerProvider.mjs';
-import SigningClient from '../utils/SigningClient.mjs';
 
 class App extends React.Component {
   constructor(props) {
@@ -136,6 +134,10 @@ class App extends React.Component {
     return this.props.network?.connected
   }
 
+  restClient() {
+    return this.props.network?.restClient
+  }
+
   getSignerProvider(providerKey){
     if(this.props.network?.disabledWallets?.includes(providerKey)) return
 
@@ -144,14 +146,12 @@ class App extends React.Component {
 
   disconnect() {
     localStorage.removeItem('connected')
-    this.state.signerProvider?.disconnect()
+    this.state.wallet?.disconnect()
     this.setState({
       error: null,
       address: null,
       balance: null,
-      wallet: null,
-      signingClient: null,
-      signerProvider: null
+      wallet: null
     })
   }
 
@@ -191,8 +191,6 @@ class App extends React.Component {
       return
     }
 
-    this.setState({ signerProvider })
-
     const wallet = new Wallet(network, signerProvider)
     try {
       const key = await wallet.connect();
@@ -201,38 +199,28 @@ class App extends React.Component {
       }
     } catch (e) {
       return this.setState({
-        error: `Unable to connect to ${signerProvider?.label || 'signer'}: ${e.message}`,
+        error: `Unable to connect to ${signerProvider?.label || 'signer'}: ${e?.message}`,
         address: null,
         wallet: null,
-        signingClient: null
       })
     }
-    try {
-      const signingClient = SigningClient(network, signerProvider)
-      signingClient.registry.register("/cosmos.authz.v1beta1.MsgGrant", MsgGrant)
-      signingClient.registry.register("/cosmos.authz.v1beta1.MsgRevoke", MsgRevoke)
-
-      const address = await wallet.getAddress();
-
-      localStorage.setItem('connected', providerKey)
-      this.setState({
-        address,
-        wallet,
-        signingClient,
-        error: false,
-        qrCodeUri: null,
-        qrCodeCallback: null
-      })
-    } catch (e) {
-      console.log(e)
-      return this.setState({
-        error: `Failed to connect to ${signerProvider?.label || 'signer'}: ${e.message}`
-      })
-    }
+    const address = wallet.address;
+    localStorage.setItem('connected', providerKey)
+    this.setState({
+      address,
+      wallet,
+      error: false,
+      qrCodeUri: null,
+      qrCodeCallback: null
+    })
   }
 
   refreshInterval() {
-    this.setState({ refresh: true })
+    const balanceInterval = setInterval(() => {
+      this.getBalance();
+    }, 15_000);
+
+    this.setState({ refresh: true, balanceInterval })
     this.refreshTimeout()
   }
 
@@ -249,6 +237,7 @@ class App extends React.Component {
 
   clearRefreshInterval() {
     clearTimeout(this.state.grantTimeout);
+    clearInterval(this.state.balanceInterval);
     this.setState({ refresh: false })
   }
 
@@ -306,10 +295,11 @@ class App extends React.Component {
   async getBalance() {
     if (!this.state.address) return
 
-    this.props.queryClient.getBalance(this.state.address)
+    return this.restClient().getBalance(this.state.address)
       .then(
         (balances) => {
-          const balance = balances?.find(
+          balances = _.compact(balances || [])
+          const balance = balances.find(
             (element) => element.denom === this.props.network.denom
           ) || { denom: this.props.network.denom, amount: 0 };
           this.setState({
@@ -328,9 +318,9 @@ class App extends React.Component {
     let granterGrants, granteeGrants, grantQuerySupport
 
     try {
-      granterGrants = await this.props.queryClient.getGranterGrants(address)
+      granterGrants = await this.restClient().getGranterGrants(address)
       this.setGrants(address, granterGrants, 'granter', true)
-      granteeGrants = await this.props.queryClient.getGranteeGrants(address)
+      granteeGrants = await this.restClient().getGranteeGrants(address)
       return this.setGrants(address, granteeGrants, 'grantee')
     } catch (error) {
       console.log('Failed to get all grants in batch', error.message)
@@ -364,7 +354,7 @@ class App extends React.Component {
       return () => {
         if (address !== this.state.address) return
 
-        return this.props.queryClient.getGrants(grantee, granter).then(
+        return this.restClient().getGrants(grantee, granter).then(
           (result) => {
             return result.map(grant => {
               return {
@@ -529,16 +519,28 @@ class App extends React.Component {
       case 'networks':
         return <span>REStake automatically imports <a href="https://cosmos.network/" target="_blank" className="text-reset"><strong>Cosmos</strong></a> chains from the <a href="https://github.com/cosmos/chain-registry" target="_blank" className="text-reset"><strong>Chain Registry</strong></a></span>
       case 'voting':
-        return <span>REStake let's you vote on behalf of your other {this.props.network && <strong onClick={this.showNetworkSelect} className="text-decoration-underline" role="button">{this.props.network.prettyName}</strong>} wallets using Authz</span>
+        return <span>REStake let's you vote on behalf of your other {this.props.network && <strong onClick={this.showNetworkSelect} className="text-decoration-underline text-nowrap" role="button">{this.props.network.prettyName}</strong>} wallets using Authz</span>
       case 'grants':
-        return <span>REStake manages all your {this.props.network && <strong onClick={this.showNetworkSelect} className="text-decoration-underline" role="button">{this.props.network.prettyName}</strong>} Authz grants in one place</span>
+        return <span>REStake manages all your {this.props.network && <strong onClick={this.showNetworkSelect} className="text-decoration-underline text-nowrap" role="button">{this.props.network.prettyName}</strong>} Authz grants in one place</span>
     }
-    return <span>REStake allows validators to <strong onClick={() => this.setState({ showAbout: true })} className="text-decoration-underline" role="button">auto-compound</strong> your {this.props.network && <strong onClick={this.showNetworkSelect} className="text-decoration-underline" role="button">{this.props.network.prettyName}</strong>} staking rewards</span>
+    return <span>REStake allows validators to <strong onClick={() => this.setState({ showAbout: true })} className="text-decoration-underline" role="button">auto-compound</strong> your {this.props.network && <strong onClick={this.showNetworkSelect} className="text-decoration-underline text-nowrap" role="button">{this.props.network.prettyName}</strong>} staking rewards</span>
+  }
+
+  networkAlertProps() {
+    if(!this.props.network?.networkAlert) return {}
+
+    let props = { variant: 'info', dismissible: false }
+    if(typeof this.props.network.networkAlert === 'string'){
+      props = { ...props, message: this.props.network.networkAlert }
+    }else{
+      props = { ...props, ...this.props.network.networkAlert }
+    }
+    return props
   }
 
   render() {
     return (
-      <Container fluid="lg">
+      <Container fluid="xl">
         <header className="">
           <div className="d-flex justify-content-between align-items-center py-3 border-bottom">
             <div className="logo d-flex align-items-end text-reset text-decoration-none">
@@ -555,7 +557,7 @@ class App extends React.Component {
               )}
             </div>
             <div className="d-flex align-items-center text-reset text-decoration-none">
-              <p className="lead fs-6 text-center m-0 px-3 d-lg-block d-none">
+              <p className="lead fs-6 text-center m-0 px-5 d-lg-block d-none">
                 {this.introText()}
               </p>
             </div>
@@ -566,34 +568,43 @@ class App extends React.Component {
                 network={this.props.network}
                 favourites={this.state.favourites || []}
                 validators={this.props.validators}
-                changeNetwork={this.props.changeNetwork} />
+                changeNetwork={this.props.changeNetwork}
+                toggleFavourite={this.toggleFavourite}
+              />
             </div>
           </div>
           <div className="d-flex justify-content-between border-bottom">
-            <Navbar className={`navbar navbar-expand ${this.props.theme === 'dark' ? 'navbar-dark' : 'navbar-light'}`}>
+            <Navbar className={`navbar navbar-expand ${this.props.theme === 'dark' ? 'navbar-dark' : 'navbar-light'} me-3`}>
               <div className="justify-content-center">
                 <Nav activeKey={this.props.active} onSelect={(e) => this.props.setActive(e)}>
-                  <div className="nav-item pe-2 border-end">
+                  <div className="nav-item pe-2 border-end text-center">
                     <Nav.Link eventKey="networks">
                       <Stars className="mb-1 me-1" /><span className="d-none d-sm-inline"> Explore</span>
                     </Nav.Link>
                   </div>
                   {this.props.network && (
                     <>
-                      <div className="nav-item px-2 border-end">
+                      <div className="nav-item px-2 border-end text-center">
                         <Nav.Link eventKey="delegations">
-                          <Coin className="mb-1 me-1" /><span className="d-none d-sm-inline"> Stake</span>
+                          <CoinIcon className="mb-1 me-1" /><span className="d-none d-sm-inline"> Stake</span>
                         </Nav.Link>
                       </div>
-                      <div className="nav-item px-2 border-end">
+                      <div className="nav-item px-2 border-end text-center">
                         <Nav.Link eventKey="voting">
                           <EnvelopePaper className="mb-1 me-1" /><span className="d-none d-sm-inline"> Vote</span>
                         </Nav.Link>
                       </div>
                       {this.state.address && this.props.network.authzSupport && (
-                        <div className="nav-item ps-2">
+                        <div className="nav-item px-2 border-end text-center">
                           <Nav.Link eventKey="grants">
                             <Magic className="mb-1 me-1" /><span className="d-none d-sm-inline"> Grant</span>
+                          </Nav.Link>
+                        </div>
+                      )}
+                      {!this.props.directory.testnet && (
+                        <div className="nav-item px-2 text-center">
+                          <Nav.Link eventKey="swap">
+                            <CurrencyExchange className="mb-1 me-1" /><span className="d-none d-sm-inline"> Swap</span>
                           </Nav.Link>
                         </div>
                       )}
@@ -613,10 +624,11 @@ class App extends React.Component {
                             <>
                               <span className="d-none d-md-inline pe-2">
                                 <Favourite
-                                  favourites={this.favouriteAddresses()}
-                                  value={this.state.address}
-                                  label={this.viewingWallet() && this.state.wallet?.name}
-                                  toggle={this.toggleFavouriteAddress} />
+                                  value={this.favouriteAddresses().some(el => el['address'] === this.state.address)}
+                                  toggle={() => this.toggleFavouriteAddress(this.state.address, this.viewingWallet() && this.state.wallet?.name)}
+                                  onTooltip="Remove saved address"
+                                  offTooltip="Save address"
+                                />
                               </span>
                               <span>
                                 {this.viewingWallet() ? (
@@ -640,7 +652,7 @@ class App extends React.Component {
                           ) : (
                             <select className="form-select form-select-sm d-none d-lg-block ms-2" aria-label="Address" value={this.state.address || ''} onChange={(e) => this.setState({ address: e.target.value })} style={{maxWidth: 200}}>
                               {this.state.wallet ? (
-                                <optgroup label={this.state.signerProvider.label}>
+                                <optgroup label={this.state.wallet.signerProvider.label}>
                                   <option value={this.state.wallet.address}>{this.state.wallet.name || truncateAddress(this.state.wallet.address)}</option>
                                 </optgroup>
                               ) : (
@@ -671,10 +683,11 @@ class App extends React.Component {
                       <li className="nav-item px-3 border-end align-items-center d-none d-md-flex">
                         <div role="button" onClick={() => this.showWalletModal({activeTab: this.state.wallet ? 'wallet' : 'saved'})}>
                           {this.state.balance ? (
-                            <Coins
-                              coins={this.state.balance}
+                            <Coin
+                              {...this.state.balance}
                               asset={this.props.network.baseAsset}
                               className="small text-end"
+                              showImage={false}
                             />
                           ) : (
                             <Spinner animation="border" role="status" className="spinner-border-sm text-secondary">
@@ -698,10 +711,11 @@ class App extends React.Component {
                               <div className="d-block d-md-none">
                                 <Dropdown.Header className="text-truncate">{this.addressName()}</Dropdown.Header>
                                 <Dropdown.Item as="button" onClick={() => this.showWalletModal({activeTab: this.state.wallet ? 'wallet' : 'saved'})}>
-                                  <Coins
-                                    coins={this.state.balance}
+                                  <Coin
+                                    {...this.state.balance}
                                     asset={this.props.network.baseAsset}
                                     className="small"
+                                    showImage={false}
                                   />
                                 </Dropdown.Item>
                                 <Dropdown.Divider />
@@ -730,7 +744,7 @@ class App extends React.Component {
                             {this.state.address && (
                               <>
                                 <Dropdown.Divider />
-                                <Dropdown.Item as="button" onClick={this.disconnect}>{this.state.wallet ? `Disconnect ${this.state.signerProvider?.label}` : 'Close'}</Dropdown.Item>
+                                <Dropdown.Item as="button" onClick={this.disconnect}>{this.state.wallet ? `Disconnect ${this.state.wallet.signerProvider?.label}` : 'Close'}</Dropdown.Item>
                               </>
                             )}
                           </Dropdown.Menu>
@@ -749,12 +763,10 @@ class App extends React.Component {
               This network was added to REStake automatically and has not been thoroughly tested yet. <a href="https://github.com/eco-stake/restake-ui/issues" target="_blank">Raise an issue</a> if you have any problems.
             </AlertMessage>
           )}
-          <AlertMessage message={this.state.error} variant="danger" dismissible={false} />
-          {!this.state.providerError === 'keplr' && (
-            <AlertMessage variant="warning" dismissible={true} onClose={() => this.setState({ providerError: false })}>
-              Please install the <a href="https://chrome.google.com/webstore/detail/keplr/dmkamcknogkgcdfhhbddcghachkejeap?hl=en" target="_blank" rel="noreferrer">Keplr browser extension</a> using desktop Google Chrome.
-            </AlertMessage>
+          {this.props.network?.networkAlert && (
+            <AlertMessage {...this.networkAlertProps()} />
           )}
+          <AlertMessage message={this.state.error} variant="danger" dismissible={false} />
           {this.props.active === 'networks' && (
             <Networks
               networks={Object.values(this.props.networks)}
@@ -779,8 +791,7 @@ class App extends React.Component {
                 showAbout={() => this.setState({ showAbout: true })}
                 onGrant={this.onGrant}
                 onRevoke={this.onRevoke}
-                queryClient={this.props.queryClient}
-                signingClient={this.state.signingClient} />
+              />
             </>
           }
           {this.props.active === 'voting' && (
@@ -789,8 +800,7 @@ class App extends React.Component {
               address={this.state.address}
               wallet={this.state.wallet}
               favouriteAddresses={this.favouriteAddresses()}
-              queryClient={this.props.queryClient}
-              signingClient={this.state.signingClient} />
+            />
           )}
           {this.props.active === 'grants' && this.state.address && this.props.network.authzSupport && (
             <Grants
@@ -805,9 +815,17 @@ class App extends React.Component {
               toggleFavouriteAddress={this.toggleFavouriteAddress}
               onGrant={this.onGrant}
               onRevoke={this.onRevoke}
-              queryClient={this.props.queryClient}
               grantQuerySupport={this.state.grantQuerySupport}
-              signingClient={this.state.signingClient} />
+            />
+          )}
+          {this.props.active === 'swap' && !this.props.directory.testnet && (
+            <Swap
+              networks={this.props.networks}
+              network={this.props.network}
+              wallet={this.state.wallet}
+              theme={this.props.theme}
+              getBalance={this.getBalance}
+            />
           )}
         </div>
         <footer className="d-flex flex-wrap justify-content-between align-items-center py-3 my-4 border-top">
@@ -846,7 +864,6 @@ class App extends React.Component {
           networks={Object.values(this.props.networks)}
           address={this.state.address}
           wallet={this.state.wallet}
-          signerProvider={this.state.signerProvider}
           balances={this.state.balances}
           favouriteAddresses={this.state.favouriteAddresses}
           updateFavouriteAddresses={this.updateFavouriteAddresses}
@@ -856,22 +873,14 @@ class App extends React.Component {
             this.hideWalletModal()
           }}
         />
-        <ConnectWalletModal
-          show={this.state.connectWallet}
-          signerProvider={this.state.signerProvider}
-          uri={this.state.qrCodeUri}
-          callback={this.state.qrCodeCallback}
-          onClose={() => this.setState({connectWallet: false})}
-        />
         {this.props.network && (
           <SendModal
             show={this.state.showSendModal}
             network={this.props.network}
             address={this.state.address}
             wallet={this.state.wallet}
-            balance={this.state.balance}
+            balances={this.state.balances}
             favouriteAddresses={this.favouriteAddresses()}
-            signingClient={this.state.signingClient}
             onHide={() => this.setState({ showSendModal: false })}
             onSend={this.onSend}
           />

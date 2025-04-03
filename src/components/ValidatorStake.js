@@ -10,7 +10,7 @@ import {
 } from 'react-bootstrap'
 import { ChevronLeft, CheckCircle, XCircle, QuestionCircle } from "react-bootstrap-icons";
 
-import Coins from './Coins';
+import Coin from './Coin';
 import TooltipIcon from './TooltipIcon'
 
 import DelegateForm from './DelegateForm'
@@ -21,9 +21,9 @@ import AlertMessage from './AlertMessage'
 import REStakeGrantForm from './REStakeGrantForm';
 import Address from './Address';
 import OperatorLastRestake from './OperatorLastRestake';
-import CountdownRestake from './CountdownRestake';
 import RevokeGrant from './RevokeGrant';
 import ValidatorStatus from './ValidatorStatus'
+import Coins from './Coins';
 
 function ValidatorStake(props) {
   const { network, validator, operator, balance, wallet, address, lastExec } = props
@@ -33,10 +33,10 @@ function ValidatorStake(props) {
   const [error, setError] = useState()
 
   const delegation = props.delegations && props.delegations[validator.address]
+  const validatorOperator = validator.isValidatorOperator(address)
   const validatorRewards = props.rewards && props.rewards[validator.address]
   const reward = rewardAmount(validatorRewards, network.denom)
   const validatorCommission = props.commission && props.commission[validator.address]
-  const commission = rewardAmount(validatorCommission, network.denom, 'commission')
   const validatorGrants = props.grants && operator && props.grants[operator.botAddress]
   const { grantsValid, grantsExist, maxTokens, stakeGrant } = validatorGrants || {}
 
@@ -141,7 +141,6 @@ function ValidatorStake(props) {
               validatorApy={props.validatorApy}
               authzSupport={props.authzSupport}
               restakePossible={props.restakePossible}
-              signingClient={props.signingClient}
               closeForm={() => setAction()}
               onGrant={onGrant}
               onRevoke={onRevoke}
@@ -156,7 +155,6 @@ function ValidatorStake(props) {
               wallet={wallet}
               balance={balance}
               delegation={delegation}
-              signingClient={props.signingClient}
               closeForm={() => setAction()}
               onDelegate={onDelegate} />
           )}
@@ -222,7 +220,12 @@ function ValidatorStake(props) {
                       <td scope="row">Delegation</td>
                       <td className="text-break">
                         {!props.isLoading('delegations') ? (
-                          <Coins coins={delegation?.balance || { amount: 0, denom: network.denom }} asset={network.baseAsset} fullPrecision={true} />
+                          <Coin
+                            amount={delegation?.balance?.amount || 0}
+                            denom={network.denom}
+                            asset={network.baseAsset}
+                            fullPrecision={true}
+                          />
                         ) : (
                           <Spinner animation="border" role="status" className="spinner-border-sm">
                             <span className="visually-hidden">Loading...</span>
@@ -236,7 +239,7 @@ function ValidatorStake(props) {
                       <td scope="row">Rewards</td>
                       <td>
                         {!props.isLoading('rewards') ? (
-                          <Coins coins={{ amount: reward, denom: network.denom }} asset={network.baseAsset} fullPrecision={true} />
+                          <Coins coins={validatorRewards?.reward} network={network} fullPrecision={true} />
                         ) : (
                           <Spinner animation="border" role="status" className="spinner-border-sm">
                             <span className="visually-hidden">Loading...</span>
@@ -245,12 +248,12 @@ function ValidatorStake(props) {
                       </td>
                     </tr>
                   )}
-                  {!!commission && (
+                  {validatorOperator && (
                     <tr>
                       <td scope="row">Commission</td>
                       <td>
                         {!props.isLoading('commission') ? (
-                          <Coins coins={{ amount: commission, denom: network.denom }} asset={network.baseAsset} fullPrecision={true} />
+                          <Coins coins={validatorCommission?.commission} network={network} fullPrecision={true} />
                         ) : (
                           <Spinner animation="border" role="status" className="spinner-border-sm">
                             <span className="visually-hidden">Loading...</span>
@@ -294,7 +297,7 @@ function ValidatorStake(props) {
                       <tr>
                         <td scope="row">Minimum Reward</td>
                         <td>
-                          <Coins coins={minimumReward()} asset={network.baseAsset} fullPrecision={true} hideValue={true} />
+                          <Coin {...minimumReward()} asset={network.baseAsset} fullPrecision={true} showValue={false} showImage={false} />
                         </td>
                       </tr>
                       {network.authzSupport && (
@@ -305,15 +308,6 @@ function ValidatorStake(props) {
                               <OperatorLastRestake operator={operator} lastExec={lastExec} />
                             </td>
                           </tr>
-                          {/* <tr>
-                            <td scope="row">Next REStake</td>
-                            <td>
-                              <CountdownRestake
-                                network={network}
-                                operator={operator}
-                              />
-                            </td>
-                          </tr> */}
                         </>
                       )}
                       <tr>
@@ -347,7 +341,7 @@ function ValidatorStake(props) {
                               <td scope="row">Grant Remaining</td>
                               <td className={!reward || maxTokens == null || larger(maxTokens, reward) ? 'text-success' : 'text-danger'}>
                                 {maxTokens ? (
-                                  <Coins coins={{ amount: maxTokens, denom: network.denom }} asset={network.baseAsset} fullPrecision={true} />
+                                  <Coin amount={maxTokens} denom={network.denom} asset={network.baseAsset} fullPrecision={true} showImage={false} />
                                 ) : (
                                   'Unlimited'
                                 )}
@@ -377,7 +371,6 @@ function ValidatorStake(props) {
                       address={address}
                       wallet={wallet}
                       rewards={validatorRewards && [validatorRewards]}
-                      signingClient={props.signingClient}
                       onClaimRewards={props.onClaimRewards}
                       setLoading={(loading) =>
                         setLoading(loading)
@@ -385,26 +378,25 @@ function ValidatorStake(props) {
                       setError={setError}
                     />
                     <ClaimRewards
+                      disabled={!validatorRewards || !rewardAmount(validatorRewards, network.denom)}
                       restake={true}
                       network={network}
                       address={address}
                       wallet={wallet}
                       rewards={validatorRewards && [validatorRewards]}
-                      signingClient={props.signingClient}
                       onClaimRewards={props.onClaimRewards}
                       setLoading={(loading) =>
                         setLoading(loading)
                       }
                       setError={setError}
                     />
-                    {!!commission && (
+                    {validatorOperator && (
                       <ClaimRewards
                         commission={true}
                         network={network}
                         address={address}
                         wallet={wallet}
                         rewards={validatorRewards && [validatorRewards]}
-                        signingClient={props.signingClient}
                         onClaimRewards={props.onClaimRewards}
                         setLoading={(loading) =>
                           setLoading(loading)
@@ -469,7 +461,6 @@ function ValidatorStake(props) {
                     grantAddress={operator.botAddress}
                     grants={[validatorGrants.stakeGrant, validatorGrants.claimGrant]}
                     buttonText="Disable REStake"
-                    signingClient={props.signingClient}
                     onRevoke={onRevoke}
                     setLoading={(loading) =>
                       setLoading(loading)
